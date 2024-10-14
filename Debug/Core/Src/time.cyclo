@@ -1,0 +1,2 @@
+../Core/Src/time.c:15:8:seconds_to_time	1
+../Core/Src/time.c:23:6:time_to_string	1

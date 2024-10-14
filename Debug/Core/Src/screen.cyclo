@@ -1,0 +1,11 @@
+../Core/Src/screen.c:22:6:screen_clear	2
+../Core/Src/screen.c:28:6:screen_fill	2
+../Core/Src/screen.c:34:13:command_to_oled	1
+../Core/Src/screen.c:38:13:move_cursor_x	1
+../Core/Src/screen.c:42:13:move_cursor_start	1
+../Core/Src/screen.c:47:6:screen_init	1
+../Core/Src/screen.c:86:13:screen_draw_pixel	3
+../Core/Src/screen.c:94:13:screen_write_char	3
+../Core/Src/screen.c:107:13:screen_write_string	2
+../Core/Src/screen.c:116:6:screen_write_time	1
+../Core/Src/screen.c:123:6:screen_update	1
