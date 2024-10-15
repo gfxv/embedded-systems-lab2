@@ -31,6 +31,12 @@ void screen_fill() {
 	}
 }
 
+static inline size_t x_to_page_coord(size_t x) { return x; }
+
+static inline size_t y_to_page_coord(size_t y) { return y / 8; }
+
+static inline size_t y_to_page_bit_number(size_t y) { return y % 8; }
+
 static void command_to_oled(uint8_t command) {
 	HAL_I2C_Mem_Write(&hi2c1,0x78,0x00,1,&command,1,10);
 }
@@ -88,27 +94,28 @@ static void screen_draw_pixel(size_t x, size_t y, bool pixel_state) {
 		return;
 	}
 
-	DISPLAY[x + (y / 8) * DISPLAY_WIDTH] = (pixel_state ? 1 : 0) << (y % 8);
+	x = x_to_page_coord(x);
+	y = x_to_page_coord(y);
+
+	DISPLAY[x + y * DISPLAY_WIDTH] = (pixel_state ? 1 : 0) << y_to_page_bit_number(y);
 }
 
-static void screen_write_char(char c, const font_s *font) {
-	for (size_t i = 0; i < font->height; i++) {
-		for (size_t j = 0; j < font->width; i++) {
+static void screen_write_char(char c) {
+	for (size_t i = 0; i < FONT_HEIDHT; i++) {
+		for (size_t j = 0; j < FONT_WIDTH; i++) {
 			size_t write_bit_x = CURSOR_X + j;
 			size_t write_bit_y = CURSOR_Y + i;
-			screen_draw_pixel(write_bit_x, write_bit_y, (1 << j) & font->symbols[(c - FONT_PADDING) * font->height + i * sizeof(uint16_t)]);
-//			uint16_t pixel_value = (font->symbols[(c - FONT_PADDING) * font->height + i] >> (font->width - 1 - j)) & 0x01;
-//			screen_draw_pixel(write_bit_x, write_bit_y, pixel_value);
+			screen_draw_pixel(write_bit_x, write_bit_y, (1 << j) & FONT[(c - FONT_PADDING) * FONT_HEIDHT + i * sizeof(uint16_t)]);
 		}
 	}
 }
 
 
-static void screen_write_string(const char* str, const font_s *font) {
+static void screen_write_string(const char* str) {
 	move_cursor_start();
 	while (*str) {
-		screen_write_char(*str, font);
-		move_cursor_x(font->width);
+		screen_write_char(*str);
+		move_cursor_x(FONT_WIDTH);
 		str++;
 	}
 }
@@ -117,26 +124,16 @@ void screen_write_time(const time_s *time) {
 	char time_repr [REPRESENTATION_SIZE];
 	time_to_string(time, time_repr);
 
-	screen_write_string(time_repr, &Font16x26);
+	screen_write_string(time_repr);
 }
 
 void screen_update(void) {
-//	for (size_t i = 0; i < 8; i++) {
-//		command_to_oled(0xB0 + i);
-//		command_to_oled(0x00);
-//		command_to_oled(0x10);
-//
-//		HAL_I2C_Mem_Write(&hi2c1,0x78,0x40,I2C_MEMADD_SIZE_8BIT,&DISPLAY[DISPLAY_WIDTH * i],DISPLAY_WIDTH,100);
-//	}
-
 	command_to_oled(0xB0);
 	command_to_oled(0x00);
 	command_to_oled(0x10);
 
 //	screen_draw_pixel(100, 50, true);
-	screen_write_char('H', &Font16x26);
+	screen_write_char('H');
 
 	HAL_I2C_Mem_Write(&hi2c1,0x78,0x40,I2C_MEMADD_SIZE_8BIT,&DISPLAY,DISPLAY_BUFFER_SIZE,100);
-
-//	screen_write_char('H', &Font16x26);
 }
