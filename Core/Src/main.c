@@ -21,12 +21,18 @@
 #include "dma.h"
 #include "i2c.h"
 #include "rtc.h"
+#include "tim.h"
+#include "usart.h"
 #include "gpio.h"
+#include "tim.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "screen.h"
+#include "oled.h"
 #include "timer.h"
+#include "fonts.h"
+#include "keyboard.h"
+#include "buzzer.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -53,15 +59,13 @@
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
-
+void KB_Test( void );
+void oled_Reset( void );
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
-void HAL_RTC_AlarmAEventCallback(RTC_HandleTypeDef *hrtc) {
-	timer_tick();
-}
 
 /* USER CODE END 0 */
 
@@ -69,6 +73,8 @@ void HAL_RTC_AlarmAEventCallback(RTC_HandleTypeDef *hrtc) {
   * @brief  The application entry point.
   * @retval int
   */
+
+uint32_t last_time;
 int main(void)
 {
 
@@ -96,11 +102,14 @@ int main(void)
   MX_DMA_Init();
   MX_I2C1_Init();
   MX_RTC_Init();
+  MX_USART6_UART_Init();
+  MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
-  screen_init();
-//  time_s time = seconds_to_time(3661);
-//  screen_write_time(&time);
-//  screen_update();
+  oled_Init();
+  Buzzer_Init();
+  last_time = HAL_GetTick();
+  Buzzer_Set_Freq(370);
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -110,8 +119,22 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	  HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_13);
-	  HAL_Delay(500);
+	  update_timer_time();
+	  if (HAL_GetTick() - last_time >= 1000) {
+		  last_time = HAL_GetTick();
+		  timer_tick();
+	  }
+
+	  oled_Fill(Black);
+	  oled_SetCursor(0, 0);
+
+	  key_e key = get_pressed_key();
+	  handle_key_click(&key);
+
+	  time_s time = seconds_to_time(get_time());
+
+	  oled_WriteTime(&time, Font_11x18, White);
+	  oled_UpdateScreen();
   }
   /* USER CODE END 3 */
 }
@@ -170,7 +193,68 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
+void KB_Test( void ) {
+	UART_Transmit( (uint8_t*)"KB test start\n" );
+	uint8_t R = 0,
+			C = 0,
+			L = 0,
+			Row[4] = {ROW4, ROW3, ROW2, ROW1},
+			Key,
+			OldKey,
+			OLED_Keys[12] = {0x30,0x30,0x30,0x30,0x30,0x30,0x30,0x30,0x30,0x30,0x30,0x30};
+	oled_Reset();
+	OLED_KB(OLED_Keys);
+	oled_UpdateScreen();
+	for ( int i = 0; i < 4; i++ ) {
+		while( !( R && C && L ) ) {
+			OldKey = Key;
+			Key = Check_Row( Row[i] );
+			if ( Key == 0x01 && Key != OldKey) {
+				UART_Transmit( (uint8_t*)"Right pressed\n" );
+				R = 1;
+				OLED_Keys[2+3*i] = 0x31;
+				OLED_KB(OLED_Keys);
+			} else if ( Key == 0x02 && Key != OldKey) {
+				UART_Transmit( (uint8_t*)"Center pressed\n" );
+				C = 1;
+				OLED_Keys[1+3*i] = 0x31;
+				OLED_KB(OLED_Keys);
+			} else if ( Key == 0x04 && Key != OldKey) {
+				UART_Transmit( (uint8_t*)"Left pressed\n" );
+				L = 1;
+				OLED_Keys[3*i] = 0x31;
+				OLED_KB(OLED_Keys);
+			}
+		}
+		UART_Transmit( (uint8_t*)"Row complete\n" );
+		R = C = L = 0;
+		HAL_Delay(25);
+	}
+	UART_Transmit( (uint8_t*)"KB test complete\n");
+}
 
+void MY_DRAW(uint8_t OLED_Keys[12]) {
+	oled_Reset();
+	for (int i = 0; i < 12; ++i) {
+		oled_WriteChar(OLED_Keys[i], Font_7x10, White);
+	}
+	oled_UpdateScreen();
+}
+
+void OLED_KB( uint8_t OLED_Keys[12]) {
+	for (int i = 3; i >= 0; i--) {
+		oled_SetCursor(56, 5+(4-i)*10);
+		for (int j = 0; j < 3; j++) {
+			oled_WriteChar(OLED_Keys[j+3*i], Font_7x10, White);
+		}
+	}
+	oled_UpdateScreen();
+}
+void oled_Reset( void ) {
+	oled_Fill(Black);
+	oled_SetCursor(0, 0);
+	oled_UpdateScreen();
+}
 /* USER CODE END 4 */
 
 /**

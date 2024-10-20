@@ -8,6 +8,9 @@
 #ifndef INC_SOUND_H_
 #define INC_SOUND_H_
 
+
+#include <stddef.h>
+
 void make_sound(size_t ms_duration);
 
 #endif /* INC_SOUND_H_ */

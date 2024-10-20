@@ -9,8 +9,12 @@
 #define INC_TIMER_H_
 
 #include <stddef.h>
+#include "keyboard.h"
 
 void timer_tick();
-size_t get_time_left();
+size_t get_time();
+
+void handle_key_click(const key_e *key);
+void update_timer_time(void);
 
 #endif /* INC_TIMER_H_ */
